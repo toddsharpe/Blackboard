@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Crc.h"
+#include "TypeCodes.h"
 #include <functional>
 #include <unordered_map>
 
@@ -253,10 +254,12 @@ private:
 /*
  * Blackboard Instance.
  */
+using str_t = const char*;
 using BlackboardInst = Blackboard<
 	uint8_t, uint16_t, uint32_t, uint64_t,
 	int8_t, int16_t, int32_t, int64_t,
-	float, double>;
+	float, double,
+	str_t>;
 
 /*
  * Blackboard View.
@@ -309,16 +312,24 @@ struct BlackboardStore
 class BlackboardBuilder
 {
 public:
-	BlackboardBuilder(BlackboardStore& store) :
+	enum class Op
+	{
+		Add,
+		Get
+	};
+	typedef void (*Operation)(const Op op, const char*, const TypeCode);
+	BlackboardBuilder(BlackboardStore& store, const Operation onOperation = nullptr) :
 		m_store(store),
+		m_onOperation(onOperation),
 		m_path("Root")
 	{
 
 	}
 	
 	template <size_t N>
-	BlackboardBuilder(BlackboardStore& store, const char (&path)[N]) :
+	BlackboardBuilder(BlackboardStore& store, const char (&path)[N], const Operation onOperation = nullptr) :
 		m_store(store),
+		m_onOperation(onOperation),
 		m_path()
 	{
 		memcpy(m_path, path, N);
@@ -328,7 +339,7 @@ public:
 	{
 		char full[MaxPath] = {};
 		snprintf(full, sizeof(full), "%s.%s", m_path, name);
-		return BlackboardBuilder(m_store, full);
+		return BlackboardBuilder(m_store, full, m_onOperation);
 	}
 
 	BlackboardView View() const
@@ -337,7 +348,7 @@ public:
 	}
 
 	template <typename T>
-	bool Add(const char* name, T& token, T::T_Value&& init = T::T_Value()) const
+	bool Add(const char* name, T& token, T::T_Value init = T::T_Value()) const
 	{
 		static_assert(T::Access.Write);
 		
@@ -349,6 +360,9 @@ public:
 		const BlackboardID id = BLACKBOARD_ID(full);
 		if (!m_store.Blackboard.Add<typename T::T_Value>(id, init))
 			return false;
+
+		if (m_onOperation)
+			m_onOperation(Op::Add, full, GetTypeCode<typename T::T_Value>());
 
 		token.m_id = id;
 		return true;
@@ -368,6 +382,9 @@ public:
 		if (!m_store.Blackboard.Contains<typename T::T_Value>(id))
 			return false;
 
+		if (m_onOperation)
+			m_onOperation(Op::Get, full, GetTypeCode<typename T::T_Value>());
+
 		token.m_id = id;
 		return true;
 	}
@@ -376,5 +393,6 @@ private:
 	static constexpr size_t MaxPath = 128;
 
 	BlackboardStore& m_store;
+	Operation m_onOperation;
 	char m_path[MaxPath];
 };
