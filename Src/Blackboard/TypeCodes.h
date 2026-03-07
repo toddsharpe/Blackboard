@@ -59,9 +59,6 @@ constexpr TypeCode GetTypeCode()
 		return TypeCode::str;
 	else
 		static_assert(false);
-	
-	//TODO
-	return TypeCode::u8;
 }
 
 inline const char* GetTypeName(const TypeCode code)

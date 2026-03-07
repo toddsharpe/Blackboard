@@ -48,6 +48,7 @@ int main(int argc, char** argv)
 		Input<uint8_t> i;
 		ASSERT(root.Get("Component.T1", i));
 		ASSERT(view.Get(i) == 5);
+		ASSERT(view[i] == 5);
 	}
 
 	{

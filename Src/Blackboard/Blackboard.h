@@ -282,6 +282,14 @@ public:
 	}
 
 	template <typename T>
+	const T::T_Value& operator[](const T& token) const
+	{
+		static_assert(T::Access.Read);
+
+		return m_blackboard.Get<typename T::T_Value>(token.m_id);
+	}
+
+	template <typename T>
 	void Set(const T& token, const T::T_Value value) const
 	{
 		static_assert(T::Access.Write);
