@@ -1,8 +1,6 @@
 #include "Blackboard.h"
 #include <cstdint>
 
-#define ASSERT _ASSERT
-
 void BlackboardOp(const BlackboardBuilder::Op op, const char* name, const TypeCode type)
 {
 	printf("Op: %d, Name: %s, Type: %s(%d)\n",
@@ -14,55 +12,59 @@ void BlackboardOp(const BlackboardBuilder::Op op, const char* name, const TypeCo
 
 int main(int argc, char** argv)
 {
+	/*
+	 * uint8_t
+	 * uint16_t
+	 * uint32_t
+	 * uint64_t
+	 * int8_t
+	 * int16_t
+	 * int32_t
+	 * int64_t
+	 * float
+	 * double
+	 * str_t
+	*/
 	BlackboardStore store;
 	BlackboardBuilder root(store, BlackboardOp);
 	BlackboardView view = root.View();
-
+	
+	//u32
 	{
+		BlackboardBuilder sub = root.SubBuilder("u32");
+		
 		State<uint32_t> s;
-		ASSERT(root.Add("Test", s, 7));
+		ASSERT(sub.Add("Test", s, 7));
 
 		Input<uint32_t> i;
-		ASSERT(root.Get("Test", i));
+		ASSERT(sub.Get("Test", i));
+		ASSERT(view[i] == 7);
 
-		ASSERT(view.Get(i) == 7);
-		view.Set(s, 5);
-		ASSERT(view.Get(i) == 5);
-	}
-
-	BlackboardBuilder sub = root.SubBuilder("Component");
-	{
-		State<uint8_t> s;
-		ASSERT(sub.Add("T1", s));
-		view.Set(s, 3);
-
-		Input<uint8_t> i;
-		ASSERT(sub.Get("T1", i));
-
-		ASSERT(view.Get(i) == 3);
-		view.Set(s, 5);
-		ASSERT(view.Get(i) == 5);
-	}
-
-	{
-		Input<uint8_t> i;
-		ASSERT(root.Get("Component.T1", i));
-		ASSERT(view.Get(i) == 5);
+		view[s] = 5;
 		ASSERT(view[i] == 5);
 	}
 
+	//str
 	{
-		Output<float> f;
-		ASSERT(sub.Add("Pwr", f));
-		view.Set(f, 3.3);
+		BlackboardBuilder sub = root.SubBuilder("str");
+		
+		Output<str_t> o;
+		ASSERT(sub.Add("Test", o));
+		view[o] = "test";
+
+		Input<str_t> i;
+		ASSERT(sub.Get("Test", i));
+		ASSERT(strcmp(view[i].c_str(), "test") == 0);
 	}
 
+	//Generic interface
 	{
-		Output<str_t> c;
-		root.Add("Version", c, "Test");
+		OutputToken o(TypeCode::u8);
+		ASSERT(root.Add<uint8_t>("Component.Ch1", o));
+		view.Set<uint8_t>(o, 5);
 
-		Input<str_t> c2;
-		root.Get("Version", c2);
-		ASSERT(strcmp(view.Get(c2), "Test") == 0);
+		InputToken i(TypeCode::u8);
+		ASSERT(root.Get("Component.Ch1", i));
+		ASSERT(view.Get<uint8_t>(i) == 5);
 	}
 }
